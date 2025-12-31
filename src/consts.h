@@ -7,6 +7,7 @@
 
 namespace autograd {
 enum NodeType { ADD, SUB, MUL, DIV, CONST };
+enum TensorClass { TENSOR_ZERO, TENSOR_ONE };
 }
 
 #endif  // AUTOGRAD_CONSTS_H
