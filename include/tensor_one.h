@@ -12,13 +12,16 @@
 
 namespace autograd {
 
-struct TensorOne : TensorBase {
+class TensorOne : TensorBase {
+public:
   std::vector<double> data; // underlying data, imp note: this makes a copy
 
   // Constructors, one for data vector, one for size + init value vector
   explicit TensorOne(const std::vector<double>& data, bool requires_grad = false, Tape* tape = nullptr);
   explicit TensorOne(int size, double init_value = 0.0, bool requires_grad = false, Tape* tape = nullptr);
 
+  [[nodiscard]] double value() const;
+  [[nodiscard]] double grad() const;
   [[nodiscard]] size_t size() const;
 };
 

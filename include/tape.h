@@ -14,9 +14,7 @@ namespace autograd {
 
 struct Node {
   NodeType type;
-  TensorClass node_class;
-  std::tuple<int, int> dims;  // m x n
-  std::vector<int> parents;   // ids of parent nodes
+  std::vector<size_t> parents;   // ids of parent nodes
   [[nodiscard]] std::string to_string() const;
 };
 
@@ -32,9 +30,10 @@ struct Tape {
   explicit Tape(const TensorClass tape_class, const double seed_grad = 1.0)
       : seed_grad(seed_grad), tape_class(tape_class) {}
 
-  size_t add_node(NodeType type, TensorClass node_class,
-                  const std::tuple<int, int> &dims,
-                  const std::vector<int> &parents);
+  // All addition node functions return the node id (index in nodes vector)
+  size_t add_node_zero(double value, bool requires_grad); // add 0d tensor
+  size_t add_node_one(std::vector<double> value, bool requires_grad); // add 1d tensor node
+
   void backward(int node_id);
   void to_string();
 };

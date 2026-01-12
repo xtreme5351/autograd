@@ -10,7 +10,10 @@ add_library(autograd STATIC
         src/consts.h
         include/tensor_base.h
         src/node.cpp
-        src/tape.cpp
+        src/tape/tape.cpp
+        src/tape/tape_one.cpp
+        src/tape/tape_backward.cpp
+        src/tape/tape_string.cpp
 )
 
 target_include_directories(autograd PUBLIC
