@@ -75,7 +75,7 @@ TEST(Basic1DTest, BackwardSimpleAdd) {
   TensorOne b(std::vector<double>{4.0, 5.0, 6.0}, true, &tape);
 
   TensorOne c = a + b;
-  tape.backward_one(static_cast<int>(c.node_id));
+  c.backward();
 
   const std::vector<double> grad_a = tape.grad_one[a.node_id];
   const std::vector<double> grad_b = tape.grad_one[b.node_id];
@@ -92,7 +92,7 @@ TEST(Basic1DTest, BackwardSimpleSub) {
   TensorOne b(std::vector<double>{1.0, 2.0, 3.0}, true, &tape);
 
   TensorOne c = a - b;
-  tape.backward_one(static_cast<int>(c.node_id));
+  tape.backward(c.node_id);
 
   const std::vector<double> grad_a = tape.grad_one[a.node_id];
   const std::vector<double> grad_b = tape.grad_one[b.node_id];
@@ -109,7 +109,7 @@ TEST(Basic1DTest, BackwardSimpleMul) {
   TensorOne b(std::vector<double>{5.0, 6.0, 7.0}, true, &tape);
 
   TensorOne c = a * b;
-  tape.backward_one(static_cast<int>(c.node_id));
+  tape.backward(c.node_id);
 
   const std::vector<double> grad_a = tape.grad_one[a.node_id];  // d(a*b)/da = b
   const std::vector<double> grad_b = tape.grad_one[b.node_id];  // d(a*b)/db = a
@@ -130,7 +130,7 @@ TEST(Basic1DTest, BackwardChainedOps) {
   TensorOne d = c * a;
   TensorOne e = d - b;
 
-  tape.backward_one(static_cast<int>(e.node_id));
+  tape.backward(e.node_id);
 
   const std::vector<double> grad_a = tape.grad_one[a.node_id];
   const std::vector<double> grad_b = tape.grad_one[b.node_id];
@@ -147,7 +147,7 @@ TEST(Basic1DTest, BackwardSingleElementTensor) {
   TensorOne b(std::vector<double>{5.0}, true, &tape);
 
   TensorOne c = a * b;
-  tape.backward_one(static_cast<int>(c.node_id));
+  tape.backward(c.node_id);
 
   EXPECT_DOUBLE_EQ(tape.grad_one[a.node_id][0], 5.0);
   EXPECT_DOUBLE_EQ(tape.grad_one[b.node_id][0], 3.0);

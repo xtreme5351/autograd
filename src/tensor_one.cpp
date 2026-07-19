@@ -50,4 +50,6 @@ std::string TensorOne::to_string() const {
   return repr;
 }
 
+void TensorOne::backward() { this->tape->backward_one(this->node_id); }
+
 }  // namespace autograd

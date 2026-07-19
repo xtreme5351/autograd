@@ -51,8 +51,8 @@ struct Tape {
   size_t sub_one(size_t a, size_t b);
   size_t mul_one(size_t a, size_t b);
   // size_t div_one(size_t a, size_t b); investigate tensor division
-
-  void backward_one(int node_id);
+  void backward(size_t node_id);
+  void backward_one(size_t node_id);
   void to_string();
 };
 }  // namespace autograd

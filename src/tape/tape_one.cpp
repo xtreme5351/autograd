@@ -109,13 +109,22 @@ size_t Tape::mul_one(size_t a, size_t b) {
   return id;
 }
 
-void Tape::backward_one(const int node_id) {
+void Tape::backward(const size_t node_id) {
+  switch (tape_class) {
+    case TensorClass::TENSOR_ONE:
+      return this->backward_one(node_id);
+    default:
+      break;
+  }
+}
+
+void Tape::backward_one(const size_t node_id) {
   assert(tape_class == TensorClass::TENSOR_ONE);
   assert(required_grads[node_id] &&
          "Cannot backprop from a node that does not require grad");
 
   // Fresh pass: clear any gradients left over from a previous backward() call.
-  for (int i = 0; i <= node_id; ++i) {
+  for (size_t i = 0; i <= node_id; ++i) {
     std::ranges::fill(grad_one[i], 0.0);
   }
   std::ranges::fill(grad_one[node_id], seed_grad);
@@ -123,7 +132,7 @@ void Tape::backward_one(const int node_id) {
   // nodes[] is already topologically ordered (a parent's id is always less
   // than its child's), so a plain reverse scan is a valid reverse-topological
   // order -- no separate topo sort or visited-set needed.
-  for (int i = node_id; i > -1; --i) {
+  for (size_t i = node_id + 1; i-- > 0;) {
     // required_grads is monotonic under ||, so if this node doesn't need
     // grad, none of its ancestors do either -- safe to prune.
     if (!required_grads[i]) continue;
