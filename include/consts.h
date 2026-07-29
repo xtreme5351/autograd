@@ -6,8 +6,6 @@
 #define AUTOGRAD_CONSTS_H
 
 namespace autograd {
-// Append only: nothing depends on the numeric values, but backward_one's
-// `default: break` relies on unknown types staying harmless.
 enum NodeType { ADD, SUB, MUL, DIV, CONST, MATMUL, SUM, MEAN };
 enum TensorClass { TENSOR_ZERO, TENSOR_ONE, TENSOR_TWO };
 
@@ -16,13 +14,10 @@ enum TensorClass { TENSOR_ZERO, TENSOR_ONE, TENSOR_TWO };
 enum class Device { CPU, GPU };
 
 // Scalar type for 2D tensors. float rather than double because Metal Shading
-// Language has no float64 -- the CPU reference has to agree with the GPU.
-// 1D tensors keep their own double storage and are unaffected.
+// Language has no float64 so the CPU reference has to agree with the GPU.
 using Scalar = float;
 
-// Supplies the Tape constructor's default argument, so a file can flip every
-// tape it creates with one line at the top. The per-tape field remains the
-// source of truth.
+// The Tape constructor's default argument
 inline Device default_device = Device::CPU;
 }  // namespace autograd
 
