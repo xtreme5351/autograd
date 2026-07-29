@@ -4,9 +4,9 @@
 // Compute backends for 2D tensor work.
 //
 // Three namespaces expose the identical set of nine primitives:
-//   cpu::  -- the reference implementation, always compiled
-//   gpu::  -- Metal or CUDA, whichever CMake selected (exactly one)
-//   ops::  -- the dispatcher; takes a Device and forwards to one of the above
+//   cpu::  the reference implementation, always compiled
+//   gpu::  Metal or CUDA, whichever CMake selected (exactly one)
+//   ops::  the dispatcher; takes a Device and forwards to one of the above
 //
 // Everything moves through host pointers rather than device handles. That is
 // what lets Metal (memcpy into a shared buffer) and CUDA (cudaMemcpy) sit
