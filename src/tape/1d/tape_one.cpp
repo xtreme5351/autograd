@@ -113,6 +113,8 @@ void Tape::backward(const size_t node_id) {
   switch (tape_class) {
     case TensorClass::TENSOR_ONE:
       return this->backward_one(node_id);
+    case TensorClass::TENSOR_TWO:
+      return this->backward_two(node_id);
     default:
       break;
   }
