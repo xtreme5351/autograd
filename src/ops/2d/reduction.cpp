@@ -13,8 +13,9 @@ TensorTwo sum(const TensorTwo& a) {
     throw std::invalid_argument("Cannot reduce an empty tensor");
   }
   if (a.tape == nullptr) {
-    const Scalar total = cpu::sum(a.data.data(), a.size());
-    return TensorTwo(std::vector<Scalar>{total}, Shape2{1, 1}, false, nullptr);
+    const Scalar total = ops::sum(a.device, a.data.data(), a.size());
+    return TensorTwo(std::vector<Scalar>{total}, Shape2{1, 1}, false, nullptr,
+                     a.device);
   }
   const size_t new_id = a.tape->sum_two(a.node_id);
   return TensorTwo(a.tape, new_id);
@@ -25,9 +26,10 @@ TensorTwo mean(const TensorTwo& a) {
     throw std::invalid_argument("Cannot reduce an empty tensor");
   }
   if (a.tape == nullptr) {
-    const Scalar total =
-        cpu::sum(a.data.data(), a.size()) / static_cast<Scalar>(a.size());
-    return TensorTwo(std::vector<Scalar>{total}, Shape2{1, 1}, false, nullptr);
+    const Scalar total = ops::sum(a.device, a.data.data(), a.size()) /
+                         static_cast<Scalar>(a.size());
+    return TensorTwo(std::vector<Scalar>{total}, Shape2{1, 1}, false, nullptr,
+                     a.device);
   }
   const size_t new_id = a.tape->mean_two(a.node_id);
   return TensorTwo(a.tape, new_id);

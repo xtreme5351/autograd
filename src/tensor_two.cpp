@@ -8,9 +8,14 @@
 
 namespace autograd {
 
+// A taped tensor takes the tape's device, so `device` can never disagree with
+// the tape a node was recorded on; the argument only applies when untaped.
 TensorTwo::TensorTwo(const std::vector<Scalar>& data, const Shape2 shape,
-                     const bool requires_grad, Tape* tape)
-    : TensorBase(requires_grad, tape, -1), data(data), shape(shape) {
+                     const bool requires_grad, Tape* tape, const Device device)
+    : TensorBase(requires_grad, tape, -1),
+      data(data),
+      shape(shape),
+      device(tape != nullptr ? tape->device : device) {
   assert(data.size() == shape.numel() && "Data size does not match shape");
   if (tape != nullptr) {
     this->node_id = tape->add_node_two(this->data, shape, requires_grad);
@@ -18,8 +23,10 @@ TensorTwo::TensorTwo(const std::vector<Scalar>& data, const Shape2 shape,
 }
 
 TensorTwo::TensorTwo(const Shape2 shape, const Scalar init_value,
-                     const bool requires_grad, Tape* tape)
-    : TensorBase(requires_grad, tape, -1), shape(shape) {
+                     const bool requires_grad, Tape* tape, const Device device)
+    : TensorBase(requires_grad, tape, -1),
+      shape(shape),
+      device(tape != nullptr ? tape->device : device) {
   this->data = std::vector<Scalar>(shape.numel(), init_value);
   if (tape != nullptr) {
     this->node_id = tape->add_node_two(this->data, shape, requires_grad);
@@ -27,7 +34,8 @@ TensorTwo::TensorTwo(const Shape2 shape, const Scalar init_value,
 }
 
 TensorTwo::TensorTwo(Tape* tape, const size_t node_id)
-    : TensorBase(tape->required_grads[node_id], tape, node_id) {
+    : TensorBase(tape->required_grads[node_id], tape, node_id),
+      device(tape->device) {
   this->data = tape->values_two[node_id];
   this->shape = tape->shapes_two[node_id];
 }

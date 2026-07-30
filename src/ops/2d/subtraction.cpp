@@ -1,22 +1,20 @@
 //
 // Created by Pranav C on 29/07/2026.
 //
+// Tensor-scalar forms all route through ops::affine (out = alpha*a + beta):
+// a - k is (1, -k) and k - a is (-1, k), so neither needs its own kernel or a
+// materialised tensor of k.
 
 #include "operations.h"
 
 namespace autograd {
 
 TensorTwo operator-(const TensorTwo& a, const TensorTwo& b) {
-  if (a.tape != b.tape) {
-    throw std::invalid_argument("Tensors must have the same tape");
-  }
-  if (a.shape != b.shape) {
-    throw std::invalid_argument("Tensors must have the same shape");
-  }
+  check_binary_two(a, b);
   if (a.tape == nullptr) {
     std::vector<Scalar> res(a.size());
-    for (size_t i = 0; i < a.size(); ++i) res[i] = a.data[i] - b.data[i];
-    return TensorTwo(res, a.shape, false, nullptr);
+    ops::sub(a.device, a.data.data(), b.data.data(), res.data(), a.size());
+    return TensorTwo(res, a.shape, false, nullptr, a.device);
   }
   const size_t new_id = a.tape->sub_two(a.node_id, b.node_id);
   return TensorTwo(a.tape, new_id);
@@ -25,8 +23,8 @@ TensorTwo operator-(const TensorTwo& a, const TensorTwo& b) {
 TensorTwo operator-(const TensorTwo& a, const Scalar k) {
   if (a.tape == nullptr) {
     std::vector<Scalar> res(a.size());
-    for (size_t i = 0; i < a.size(); ++i) res[i] = a.data[i] - k;
-    return TensorTwo(res, a.shape, false, nullptr);
+    ops::affine(a.device, 1.0f, a.data.data(), -k, res.data(), a.size());
+    return TensorTwo(res, a.shape, false, nullptr, a.device);
   }
 
   const TensorTwo b(a.shape, k, false, a.tape);
@@ -37,8 +35,8 @@ TensorTwo operator-(const TensorTwo& a, const Scalar k) {
 TensorTwo operator-(const Scalar k, const TensorTwo& a) {
   if (a.tape == nullptr) {
     std::vector<Scalar> res(a.size());
-    for (size_t i = 0; i < a.size(); ++i) res[i] = k - a.data[i];
-    return TensorTwo(res, a.shape, false, nullptr);
+    ops::affine(a.device, -1.0f, a.data.data(), k, res.data(), a.size());
+    return TensorTwo(res, a.shape, false, nullptr, a.device);
   }
 
   const TensorTwo b(a.shape, k, false, a.tape);
@@ -48,7 +46,7 @@ TensorTwo operator-(const Scalar k, const TensorTwo& a) {
 
 TensorTwo& operator-=(TensorTwo& a, const Scalar k) {
   if (a.tape == nullptr) {
-    for (size_t i = 0; i < a.size(); ++i) a.data[i] -= k;
+    ops::add_bias(a.device, -k, a.data.data(), a.size());
     return a;
   }
 
@@ -65,14 +63,9 @@ TensorTwo& operator-=(TensorTwo& a, const Scalar k) {
 }
 
 TensorTwo& operator-=(TensorTwo& a, const TensorTwo& b) {
-  if (a.tape != b.tape) {
-    throw std::invalid_argument("Tensors must have the same tape");
-  }
-  if (a.shape != b.shape) {
-    throw std::invalid_argument("Tensors must have the same shape");
-  }
+  check_binary_two(a, b);
   if (a.tape == nullptr) {
-    for (size_t i = 0; i < a.size(); ++i) a.data[i] -= b.data[i];
+    ops::axpy(a.device, -1.0f, b.data.data(), a.data.data(), a.size());
     return a;
   }
 

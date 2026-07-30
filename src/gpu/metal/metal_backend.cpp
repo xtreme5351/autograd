@@ -47,8 +47,8 @@ constexpr uint32_t kThreadgroupSize = 256;  // must match kernels.metal
 constexpr uint32_t kTileSize = 16;          // 16x16 = 256 threads for matmul
 
 const char* const kKernelNames[] = {
-    "ew_add",   "ew_sub",      "ew_mul",  "ew_axpy", "ew_mul_add",
-    "ew_add_bias", "ew_fill",  "reduce_sum", "matmul"};
+    "ew_add",      "ew_sub",  "ew_mul",     "ew_affine", "ew_axpy",
+    "ew_mul_add",  "ew_fill", "ew_add_bias", "reduce_sum", "matmul"};
 
 // Reuses buffers across ops. newBuffer is a real allocation, and the tape
 // issues a handful per node -- at 50k nodes the allocation churn dominates.
@@ -254,6 +254,21 @@ void sub(const Scalar* a, const Scalar* b, Scalar* out, const size_t n) {
 
 void mul(const Scalar* a, const Scalar* b, Scalar* out, const size_t n) {
   binary_op("ew_mul", a, b, out, n);
+}
+
+void affine(const Scalar alpha, const Scalar* a, const Scalar beta, Scalar* out,
+            const size_t n) {
+  if (n == 0) return;
+  // d.in copies a into its own buffer and d.out allocates a separate one, so
+  // out == a is safe here.
+  Dispatch d(state(), "ew_affine");
+  d.in(a, n, 0);
+  const size_t o = d.out(n, 1);
+  d.bytes(alpha, 2);
+  d.bytes(beta, 3);
+  d.bytes(static_cast<uint32_t>(n), 4);
+  d.run_1d(n);
+  d.read_back(o, out, n);
 }
 
 void axpy(const Scalar alpha, const Scalar* x, Scalar* y, const size_t n) {

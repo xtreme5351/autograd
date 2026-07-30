@@ -25,6 +25,11 @@ void mul(const Scalar* a, const Scalar* b, Scalar* out, const size_t n) {
   cpu::mul(a, b, out, n);
 }
 
+void affine(const Scalar alpha, const Scalar* a, const Scalar beta, Scalar* out,
+            const size_t n) {
+  cpu::affine(alpha, a, beta, out, n);
+}
+
 void axpy(const Scalar alpha, const Scalar* x, Scalar* y, const size_t n) {
   cpu::axpy(alpha, x, y, n);
 }

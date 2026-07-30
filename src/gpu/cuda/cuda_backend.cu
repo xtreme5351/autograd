@@ -65,6 +65,17 @@ __global__ void ew_mul(const float* a, const float* b, float* out,
   out[gid] = a[gid] * b[gid];
 }
 
+// out = alpha * a + beta
+__global__ void ew_affine(const float* a, float* out, const float alpha,
+                          const float beta, const unsigned n) {
+  const unsigned gid = blockIdx.x * blockDim.x + threadIdx.x;
+  if (gid >= n) return;
+  // Written as a plain multiply-add, not fmaf, to mirror cpu::affine's
+  // expression exactly -- ew_axpy follows the same convention and is asserted
+  // bitwise-identical to the CPU in GpuBackend.AccumulatorsMatchCpu.
+  out[gid] = alpha * a[gid] + beta;
+}
+
 __global__ void ew_axpy(const float* x, float* y, const float alpha,
                         const unsigned n) {
   const unsigned gid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -254,6 +265,18 @@ void mul(const Scalar* a, const Scalar* b, Scalar* out, const size_t n) {
   const DeviceBuffer da(n, a), db(n, b), dout(n, nullptr);
   ew_mul<<<grid_1d(n), kBlockSize>>>(da.get(), db.get(), dout.get(),
                                      static_cast<unsigned>(n));
+  cudaDeviceSynchronize();
+  dout.download(out);
+}
+
+void affine(const Scalar alpha, const Scalar* a, const Scalar beta, Scalar* out,
+            const size_t n) {
+  if (n == 0) return;
+  // Separate device buffers, so out == a is safe: da is uploaded before the
+  // kernel runs and the download lands after it.
+  const DeviceBuffer da(n, a), dout(n, nullptr);
+  ew_affine<<<grid_1d(n), kBlockSize>>>(da.get(), dout.get(), alpha, beta,
+                                        static_cast<unsigned>(n));
   cudaDeviceSynchronize();
   dout.download(out);
 }

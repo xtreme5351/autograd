@@ -1,6 +1,7 @@
 //
 // Created by Pranav C on 12/01/2026.
 //
+#include <algorithm>  // std::ranges::fill
 #include <cassert>
 
 #include "tape.h"

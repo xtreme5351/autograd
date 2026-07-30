@@ -143,6 +143,7 @@ add_executable(autograd_tests
         tests/1d/stress_tape.cpp
         tests/2d/basic_tape.cpp
         tests/2d/backward_tape.cpp
+        tests/2d/eager_device.cpp
         tests/gpu/cross_check.cpp
 )
 
@@ -157,3 +158,10 @@ target_link_libraries(autograd_tests
 
 include(GoogleTest)
 gtest_discover_tests(autograd_tests)
+
+# ---- benchmarks ----
+# Not built by `all`: it is a measurement tool run by hand on target hardware to
+# calibrate the size thresholds in include/consts.h, not part of the test suite.
+#   cmake --build build --target autograd_bench && ./build/autograd_bench
+add_executable(autograd_bench EXCLUDE_FROM_ALL benchmarks/bench.cpp)
+target_link_libraries(autograd_bench PRIVATE autograd)

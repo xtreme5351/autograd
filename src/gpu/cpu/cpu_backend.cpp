@@ -29,6 +29,11 @@ void mul(const Scalar* a, const Scalar* b, Scalar* out, const size_t n) {
   for (size_t i = 0; i < n; ++i) out[i] = a[i] * b[i];
 }
 
+void affine(const Scalar alpha, const Scalar* a, const Scalar beta, Scalar* out,
+            const size_t n) {
+  for (size_t i = 0; i < n; ++i) out[i] = alpha * a[i] + beta;
+}
+
 void axpy(const Scalar alpha, const Scalar* x, Scalar* y, const size_t n) {
   for (size_t i = 0; i < n; ++i) y[i] += alpha * x[i];
 }
