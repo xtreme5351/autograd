@@ -2,7 +2,7 @@
 // Created by Pranav C on 18/07/2026.
 //
 
-#include "../include/operations.h"
+#include "operations.h"
 
 namespace autograd {
 

@@ -1,6 +1,7 @@
 //
 // Created by Pranav C on 12/01/2026.
 //
+#include <algorithm>  // std::ranges::fill
 #include <cassert>
 
 #include "tape.h"
@@ -113,6 +114,8 @@ void Tape::backward(const size_t node_id) {
   switch (tape_class) {
     case TensorClass::TENSOR_ONE:
       return this->backward_one(node_id);
+    case TensorClass::TENSOR_TWO:
+      return this->backward_two(node_id);
     default:
       break;
   }
