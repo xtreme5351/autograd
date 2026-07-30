@@ -57,6 +57,19 @@ kernel void ew_mul(device const float* a [[buffer(0)]],
   out[gid] = a[gid] * b[gid];
 }
 
+// out = alpha * a + beta. Covers every tensor-scalar form the operator
+// overloads need. Written as a plain multiply-add, not fma, to mirror
+// cpu::affine's expression exactly.
+kernel void ew_affine(device const float* a [[buffer(0)]],
+                      device float* out [[buffer(1)]],
+                      constant float& alpha [[buffer(2)]],
+                      constant float& beta [[buffer(3)]],
+                      constant uint& n [[buffer(4)]],
+                      uint gid [[thread_position_in_grid]]) {
+  if (gid >= n) return;
+  out[gid] = alpha * a[gid] + beta;
+}
+
 /* ---- accumulate-in-place ---- */
 
 // y += alpha * x

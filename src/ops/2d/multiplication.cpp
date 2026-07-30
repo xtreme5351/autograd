@@ -2,22 +2,21 @@
 // Created by Pranav C on 29/07/2026.
 //
 // Elementwise multiplication. The matrix product lives in matmul.cpp.
+//
+// The in-place untaped forms pass their destination as the source too. That is
+// documented as safe in backend.h: the GPU backends stage through their own
+// device buffers, and the CPU ones touch each index once.
 
 #include "operations.h"
 
 namespace autograd {
 
 TensorTwo operator*(const TensorTwo& a, const TensorTwo& b) {
-  if (a.tape != b.tape) {
-    throw std::invalid_argument("Tensors must have the same tape");
-  }
-  if (a.shape != b.shape) {
-    throw std::invalid_argument("Tensors must have the same shape");
-  }
+  check_binary_two(a, b);
   if (a.tape == nullptr) {
     std::vector<Scalar> res(a.size());
-    for (size_t i = 0; i < a.size(); ++i) res[i] = a.data[i] * b.data[i];
-    return TensorTwo(res, a.shape, false, nullptr);
+    ops::mul(a.device, a.data.data(), b.data.data(), res.data(), a.size());
+    return TensorTwo(res, a.shape, false, nullptr, a.device);
   }
   const size_t new_id = a.tape->mul_two(a.node_id, b.node_id);
   return TensorTwo(a.tape, new_id);
@@ -26,8 +25,8 @@ TensorTwo operator*(const TensorTwo& a, const TensorTwo& b) {
 TensorTwo operator*(const TensorTwo& a, const Scalar k) {
   if (a.tape == nullptr) {
     std::vector<Scalar> res(a.size());
-    for (size_t i = 0; i < a.size(); ++i) res[i] = a.data[i] * k;
-    return TensorTwo(res, a.shape, false, nullptr);
+    ops::affine(a.device, k, a.data.data(), 0.0f, res.data(), a.size());
+    return TensorTwo(res, a.shape, false, nullptr, a.device);
   }
 
   const TensorTwo b(a.shape, k, false, a.tape);
@@ -39,7 +38,7 @@ TensorTwo operator*(const Scalar k, const TensorTwo& a) { return a * k; }
 
 TensorTwo& operator*=(TensorTwo& a, const Scalar k) {
   if (a.tape == nullptr) {
-    for (size_t i = 0; i < a.size(); ++i) a.data[i] *= k;
+    ops::affine(a.device, k, a.data.data(), 0.0f, a.data.data(), a.size());
     return a;
   }
 
@@ -56,14 +55,9 @@ TensorTwo& operator*=(TensorTwo& a, const Scalar k) {
 }
 
 TensorTwo& operator*=(TensorTwo& a, const TensorTwo& b) {
-  if (a.tape != b.tape) {
-    throw std::invalid_argument("Tensors must have the same tape");
-  }
-  if (a.shape != b.shape) {
-    throw std::invalid_argument("Tensors must have the same shape");
-  }
+  check_binary_two(a, b);
   if (a.tape == nullptr) {
-    for (size_t i = 0; i < a.size(); ++i) a.data[i] *= b.data[i];
+    ops::mul(a.device, a.data.data(), b.data.data(), a.data.data(), a.size());
     return a;
   }
 

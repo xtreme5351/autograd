@@ -7,6 +7,7 @@
 // their parent's shape) and routing the arithmetic through ops:: so the tape's
 // device field decides whether it lands on the CPU or the GPU.
 
+#include <algorithm>  // std::fill
 #include <cassert>
 
 #include "backend.h"
@@ -135,11 +136,19 @@ void Tape::backward_two(const size_t node_id) {
          "Cannot backprop from a node that does not require grad");
 
   // Fresh pass: clear any gradients left over from a previous backward() call.
+  //
+  // Deliberately host-side rather than ops::fill. While tape storage lives in
+  // host memory (see backend.h), a device fill would allocate a device buffer,
+  // launch a kernel, synchronise and download -- a full round trip per node,
+  // with no input to transfer, purely to write zeros. On a 50k-node tape that
+  // is 50k round trips the CPU does with a single memset per node. This becomes
+  // worth reconsidering only once the grad buffers are device-resident, at
+  // which point the fill should stay on whichever side already owns them.
   for (size_t i = 0; i <= node_id; ++i) {
-    ops::fill(device, 0.0f, grad_two[i].data(), grad_two[i].size());
+    std::fill(grad_two[i].begin(), grad_two[i].end(), 0.0f);
   }
-  ops::fill(device, static_cast<Scalar>(seed_grad), grad_two[node_id].data(),
-            grad_two[node_id].size());
+  std::fill(grad_two[node_id].begin(), grad_two[node_id].end(),
+            static_cast<Scalar>(seed_grad));
 
   // Same argument as backward_one: a parent's id is always less than its
   // child's, so a plain reverse scan is already reverse-topological. Shapes

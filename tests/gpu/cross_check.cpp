@@ -17,6 +17,7 @@
 #include "../../include/operations.h"
 #include "../../include/tape.h"
 #include "../../include/tensor_two.h"
+#include "../support/device_guard.h"
 
 using namespace autograd;
 
@@ -76,6 +77,27 @@ TEST(GpuBackend, ElementwiseIsBitwiseIdenticalToCpu) {
 
   cpu::mul(a.data(), b.data(), want.data(), kBig);
   gpu::mul(a.data(), b.data(), got.data(), kBig);
+  for (size_t i = 0; i < kBig; ++i) EXPECT_TRUE(bitwise_equal(got[i], want[i]));
+
+  // affine is a multiply and an add rather than a single IEEE operation, so it
+  // only stays bitwise-identical while neither side contracts it into an fma.
+  // Both are written as a plain `alpha * a + beta` for exactly that reason --
+  // the same convention ew_axpy already relies on below.
+  cpu::affine(0.75f, a.data(), -1.25f, want.data(), kBig);
+  gpu::affine(0.75f, a.data(), -1.25f, got.data(), kBig);
+  for (size_t i = 0; i < kBig; ++i) EXPECT_TRUE(bitwise_equal(got[i], want[i]));
+}
+
+// affine's in-place form: the untaped `a *= k` and friends pass the same
+// pointer as source and destination, which backend.h documents as safe.
+TEST(GpuBackend, AffineAliasesSourceAndDestination) {
+  if (!gpu_ready()) GTEST_SKIP() << "no GPU backend available";
+
+  const std::vector<Scalar> a = random_data(kBig, 6);
+  std::vector<Scalar> want(kBig), got = a;
+
+  cpu::affine(2.5f, a.data(), 0.0f, want.data(), kBig);   // out != in
+  gpu::affine(2.5f, got.data(), 0.0f, got.data(), kBig);  // out == in
   for (size_t i = 0; i < kBig; ++i) EXPECT_TRUE(bitwise_equal(got[i], want[i]));
 }
 
@@ -165,6 +187,7 @@ TEST(GpuBackend, MatmulMatchesCpuAcrossAllSpecs) {
 // a GPU tape, and compare both the forward values and every gradient.
 TEST(GpuBackend, TapeProgramAgreesAcrossDevices) {
   if (!gpu_ready()) GTEST_SKIP() << "no GPU backend available";
+  const ForceGpu force;  // otherwise these sizes stay on the CPU and prove nothing
 
   constexpr size_t m = 24, k = 16, n = 12;
   const std::vector<Scalar> a_val = random_data(m * k, 10);
@@ -224,6 +247,34 @@ TEST(GpuBackend, GpuDeviceFallsBackWhenUnavailable) {
   EXPECT_FLOAT_EQ(c.data[0], 6.0f);
   for (size_t i = 0; i < 4; ++i) {
     EXPECT_FLOAT_EQ(tape.grad_two[a.node_id][i], 1.0f);
+  }
+}
+
+// The size heuristic is a performance switch, never a semantic one: the same
+// program must produce the same numbers whether it lands on the CPU or the GPU.
+// This holds on a CPU-only machine too (both runs are CPU), where it guards
+// against the thresholds accidentally changing results rather than just routing.
+TEST(GpuBackend, SizeThresholdDoesNotChangeResults) {
+  auto run = [] {
+    Tape tape(TensorClass::TENSOR_TWO, 1.0, Device::GPU);
+    const TensorTwo a(random_data(64, 20), Shape2{8, 8}, true, &tape);
+    const TensorTwo b(random_data(64, 21), Shape2{8, 8}, true, &tape);
+    const TensorTwo loss = mean(matmul(a, b) * b);
+    loss.backward();
+    return std::pair{loss.value(), tape.grad_two[a.node_id]};
+  };
+
+  const auto below = run();  // small: heuristic keeps it on the CPU
+  const auto forced = [&] {
+    const ForceGpu force;
+    return run();
+  }();
+
+  EXPECT_EQ(forced.first.size(), below.first.size());
+  expect_close(forced.first[0], below.first[0]);
+  ASSERT_EQ(forced.second.size(), below.second.size());
+  for (size_t i = 0; i < below.second.size(); ++i) {
+    expect_close(forced.second[i], below.second[i]);
   }
 }
 

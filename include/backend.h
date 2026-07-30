@@ -40,6 +40,11 @@ struct MatMulSpec {
   Scalar beta;
 };
 
+// Every primitive taking both a source and a destination pointer tolerates
+// out == a. The GPU backends stage through their own device buffers, so the
+// upload happens before the kernel writes and the download happens after; the
+// CPU versions read and write each index exactly once. The untaped scalar ops
+// in src/ops/2d/ rely on this for their in-place forms.
 namespace cpu {
 bool available();
 const char* name();
@@ -47,6 +52,9 @@ const char* name();
 void add(const Scalar* a, const Scalar* b, Scalar* out, size_t n);
 void sub(const Scalar* a, const Scalar* b, Scalar* out, size_t n);
 void mul(const Scalar* a, const Scalar* b, Scalar* out, size_t n);
+// out = alpha*a + beta. One primitive covers every tensor-scalar form:
+// a+k -> (1,k), a-k -> (1,-k), k-a -> (-1,k), a*k -> (k,0).
+void affine(Scalar alpha, const Scalar* a, Scalar beta, Scalar* out, size_t n);
 void axpy(Scalar alpha, const Scalar* x, Scalar* y, size_t n);     // y += a*x
 void mul_add(const Scalar* g, const Scalar* v, Scalar* y, size_t n);  // y += g*v
 void add_bias(Scalar alpha, Scalar* y, size_t n);                  // y += alpha
@@ -64,6 +72,7 @@ const char* name();
 void add(const Scalar* a, const Scalar* b, Scalar* out, size_t n);
 void sub(const Scalar* a, const Scalar* b, Scalar* out, size_t n);
 void mul(const Scalar* a, const Scalar* b, Scalar* out, size_t n);
+void affine(Scalar alpha, const Scalar* a, Scalar beta, Scalar* out, size_t n);
 void axpy(Scalar alpha, const Scalar* x, Scalar* y, size_t n);
 void mul_add(const Scalar* g, const Scalar* v, Scalar* y, size_t n);
 void add_bias(Scalar alpha, Scalar* y, size_t n);
@@ -72,13 +81,17 @@ Scalar sum(const Scalar* a, size_t n);
 void matmul(const Scalar* a, const Scalar* b, Scalar* c, const MatMulSpec& s);
 }  // namespace gpu
 
-// The only entry points the tape calls. A Device::GPU request falls back to
-// the CPU when no GPU backend is available, so asking for a GPU on a machine
-// without one degrades instead of crashing.
+// The only entry points the tape and the operator overloads call. A Device::GPU
+// request falls back to the CPU when no GPU backend is available, so asking for
+// a GPU on a machine without one degrades instead of crashing. It also falls
+// back below the size thresholds in consts.h, where the round trip costs more
+// than the kernel saves.
 namespace ops {
 void add(Device d, const Scalar* a, const Scalar* b, Scalar* out, size_t n);
 void sub(Device d, const Scalar* a, const Scalar* b, Scalar* out, size_t n);
 void mul(Device d, const Scalar* a, const Scalar* b, Scalar* out, size_t n);
+void affine(Device d, Scalar alpha, const Scalar* a, Scalar beta, Scalar* out,
+            size_t n);
 void axpy(Device d, Scalar alpha, const Scalar* x, Scalar* y, size_t n);
 void mul_add(Device d, const Scalar* g, const Scalar* v, Scalar* y, size_t n);
 void add_bias(Device d, Scalar alpha, Scalar* y, size_t n);

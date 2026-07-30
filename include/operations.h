@@ -34,6 +34,21 @@ TensorOne operator*(const TensorOne& a, const TensorOne& b);
 
 /* ---- 2D tensor operations ---- */
 
+// Shared preconditions for the elementwise binary 2D ops. The device check only
+// ever fires for untaped tensors: a taped pair shares a tape, and every
+// TensorTwo constructor takes its device from the tape when there is one.
+inline void check_binary_two(const TensorTwo& a, const TensorTwo& b) {
+  if (a.tape != b.tape) {
+    throw std::invalid_argument("Tensors must have the same tape");
+  }
+  if (a.shape != b.shape) {
+    throw std::invalid_argument("Tensors must have the same shape");
+  }
+  if (a.device != b.device) {
+    throw std::invalid_argument("Tensors must be on the same device");
+  }
+}
+
 // addition overloads
 TensorTwo operator+(const TensorTwo& a, Scalar k);
 TensorTwo operator+(Scalar k, const TensorTwo& a);
